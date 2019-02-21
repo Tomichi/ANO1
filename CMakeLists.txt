@@ -23,7 +23,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 
 
 # Declare the executable target built from your sources
-add_executable(ANO1 main.cpp)
+add_executable(ANO1 ImageObject.cpp ImageObject.h main.cpp)
 
 # Link your application with OpenCV libraries
 target_link_libraries(ANO1 ${OpenCV_LIBS})
