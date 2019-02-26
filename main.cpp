@@ -8,48 +8,19 @@ const int TRESHOLD_VALUE = 127;
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
 
-int getArea(int y, int x, cv::Mat & indexingImage) {
+ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
+	int momentX, momentY, area, perimeter;
 	std::queue<std::pair<int, int>> queue;
+	momentX = x;
+	momentY = y;
+	perimeter = area = 1;
 	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
 	const uchar DIFFERENT_COLOR = 5;
 	const int COLS = copyImage.cols, ROWS = copyImage.rows;
-	int area = 1;
 	queue.push({y, x});
 	copyImage.at<uchar>(y, x) = DIFFERENT_COLOR;
-	while (!queue.empty()) {
-		auto & pair = queue.front();
-		y = pair.first;
-		x = pair.second;
-		queue.pop();
-		for (int xh = -1; xh < 2; xh++) {
-			for (int yh = -1; yh < 2; yh++) {
-				// Test image ranges
-				if (x + xh < 0 || x + xh >= COLS || y + yh < 0 || y + yh >= ROWS) {
-					continue;
-				}
 
-				if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
-					queue.push({y + yh, x + xh});
-					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
-					area += 1;
-				}
-			}
-		}
-	}
-
-	return area;
-}
-
-int getPerimeter(int y, int x, cv::Mat & indexingImage) {
-	cv::Mat copyImage = indexingImage.clone();
-	std::queue<std::pair<int, int>> queue;
-	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
-	const uchar DIFFERENT_COLOR = 5;
-	const int COLS = copyImage.cols, ROWS = copyImage.rows;
-	int perimeter = 1;
-	queue.push({y, x});
-	copyImage.at<uchar>(y, x) = DIFFERENT_COLOR;
 	while (!queue.empty()) {
 		auto & pair = queue.front();
 		y = pair.first;
@@ -65,6 +36,9 @@ int getPerimeter(int y, int x, cv::Mat & indexingImage) {
 
 				if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
 					queue.push({y + yh, x + xh});
+					momentX += x + xh;
+					momentY += y + yh;
+					area += 1;
 					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
 				}
 
@@ -74,43 +48,10 @@ int getPerimeter(int y, int x, cv::Mat & indexingImage) {
 				}
 			}
 		}
-
 		perimeter += (isBorderPixel) ? 1 : 0;
 	}
 
-	return perimeter;
-}
-
-void computeFirstMoment(int y, int x, cv::Mat & indexingImage, long int & momentX, long int & momentY) {
-	cv::Mat copyImage = indexingImage.clone();
-	std::queue<std::pair<int, int>> queue;
-	momentX = x, momentY = y;
-	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
-	const uchar DIFFERENT_COLOR = 5;
-	const int COLS = copyImage.cols, ROWS = copyImage.rows;
-	queue.push({y, x});
-	copyImage.at<uchar>(y, x) = DIFFERENT_COLOR;
-	while (!queue.empty()) {
-		auto & pair = queue.front();
-		y = pair.first;
-		x = pair.second;
-		queue.pop();
-		for (int xh = -1; xh < 2; xh++) {
-			for (int yh = -1; yh < 2; yh++) {
-				// Test image ranges
-				if (x + xh < 0 || x + xh >= COLS || y + yh < 0 || y + yh >= ROWS) {
-					continue;
-				}
-
-				if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
-					queue.push({y + yh, x + xh});
-					momentX += x + xh;
-					momentY += y + yh;
-					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
-				}
-			}
-		}
-	}
+	return {area, perimeter, momentX, momentY};
 
 }
 
@@ -163,17 +104,12 @@ int main() {
 	// floodFill
 	int currentIndex = 20;
 	int STEP = 10;
-	int perimeter, area;
-	long int momentX, momentY;
 	for (int y = 0; y < rows; y++) {
 		for (int x = 0; x < cols; x++) {
 			if (indexingImage.at<uchar>(y, x) == WHITE_PIXEL) {
-				momentX = momentY = 0;
 				floodFill(y, x, currentIndex, indexingImage);
-				perimeter = getPerimeter(y, x, indexingImage);
-				area = getArea(y, x, indexingImage);
-				computeFirstMoment(y, x, indexingImage, momentX, momentY);
-				objects.emplace_back(ImageObject(area, perimeter, momentX, momentY));
+				auto imageObject = computeFeatures(y, x, indexingImage);
+				objects.emplace_back(imageObject);
 				currentIndex += STEP;
 			}
 		}
@@ -189,8 +125,8 @@ int main() {
 
 	objects.clear();
 
-	cv::imshow("train after tresholding", src_8uc1_img);
-	cv::imshow("train after flood fill", indexingImage);
+	cv::imshow("result of tresholding", src_8uc1_img);
+	cv::imshow("result of flood fill", indexingImage);
 	cv::waitKey(0); // wait until keypressed
 
 	return 0;

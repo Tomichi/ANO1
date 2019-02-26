@@ -1,6 +1,6 @@
 #include "ImageObject.h"
 
-ImageObject::ImageObject(int area, int perimeter, long int momentX, long int momentY) {
+ImageObject::ImageObject(int area, int perimeter, int momentX, int momentY) {
 	this->area = area;
 	this->perimeter = perimeter;
 	this->xt = momentX / area;
