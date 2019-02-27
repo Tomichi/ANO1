@@ -1,14 +1,13 @@
 #pragma once
 
 #include <string>
+#include <cmath>
 
 class ImageObject {
-	private:
-		int xt, yt, area, perimeter;
 	public:
-		ImageObject(int area, int perimeter, int momentX, int momentY);
-		const int getArea() const;
-		const int getPerimeter() const;
-		const int getXt() const;
-		const int getYt() const;
+		int xt, yt, area, perimeter;
+		double miMax, miMin, F1, F2;
+		ImageObject(
+				const int area, const int perimeter, const int momentX, const int momentY, const int momentX2,
+				const int momentY2, const int moment11);
 };

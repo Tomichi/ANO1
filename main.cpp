@@ -10,10 +10,13 @@ const uchar BLACK_PIXEL = 0;
 
 ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
-	int momentX, momentY, area, perimeter;
+	int momentX, momentY, momentX2, momentY2, area, perimeter, moment11;
 	std::queue<std::pair<int, int>> queue;
 	momentX = x;
 	momentY = y;
+	momentX2 = x*x;
+	momentY2 = y*y;
+	moment11 = x*y;
 	perimeter = area = 1;
 	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
 	const uchar DIFFERENT_COLOR = 5;
@@ -38,6 +41,9 @@ ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 					queue.push({y + yh, x + xh});
 					momentX += x + xh;
 					momentY += y + yh;
+					momentX2 += (x + xh) * (x + xh);
+					momentY2 += (y + yh) * (y + yh);
+					moment11 += (x + xh) * (y + yh);
 					area += 1;
 					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
 				}
@@ -51,7 +57,7 @@ ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 		perimeter += (isBorderPixel) ? 1 : 0;
 	}
 
-	return {area, perimeter, momentX, momentY};
+	return {area, perimeter, momentX, momentY, momentX2, momentY2, moment11};
 
 }
 
@@ -88,7 +94,6 @@ void floodFill(int y, int x, const int currentIndex, cv::Mat & indexingImage) {
 
 int main() {
 	std::ios_base::sync_with_stdio(false);
-	std::cout.sync_with_stdio(false);
 	cv::Mat src_8uc1_img;
 	src_8uc1_img = cv::imread("images/train.png", CV_LOAD_IMAGE_GRAYSCALE);
 	const int cols = src_8uc1_img.cols, rows = src_8uc1_img.rows;
@@ -116,11 +121,13 @@ int main() {
 	}
 
 	for (auto & object : objects) {
-		std::cout << "Area " << object.getArea()
-		          << " Perimeter " << object.getPerimeter()
-		          << " Moment [xt,yt] = [" << object.getXt() << "," << object.getYt() << "]"
+		std::cout << "Area " << object.area
+		          << " Perimeter " << object.perimeter
+		          << " Moment [xt,yt] = [" << object.xt << "," << object.yt << "]"
+		          << " F1 = " << object.F1
+				  << " F2 = " << object.F2
 		          << "\n";
-		indexingImage.at<uchar>(object.getYt(), object.getXt()) = WHITE_PIXEL;
+		indexingImage.at<uchar>(object.yt, object.xt) = WHITE_PIXEL;
 	}
 
 	objects.clear();
