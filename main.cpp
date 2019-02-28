@@ -10,14 +10,15 @@ const uchar BLACK_PIXEL = 0;
 
 ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
-	int momentX, momentY, momentX2, momentY2, area, perimeter, moment11;
+	long int momentX, momentY, momentX2, momentY2, area, perimeter, moment11;
 	std::queue<std::pair<int, int>> queue;
 	momentX = x;
 	momentY = y;
 	momentX2 = x*x;
 	momentY2 = y*y;
 	moment11 = x*y;
-	perimeter = area = 1;
+	perimeter = 0;
+	area = 1;
 	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
 	const uchar DIFFERENT_COLOR = 5;
 	const int COLS = copyImage.cols, ROWS = copyImage.rows;

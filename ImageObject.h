@@ -5,9 +5,9 @@
 
 class ImageObject {
 	public:
-		int xt, yt, area, perimeter;
+		long int xt, yt, area, perimeter;
 		double miMax, miMin, F1, F2;
 		ImageObject(
-				const int area, const int perimeter, const int momentX, const int momentY, const int momentX2,
-				const int momentY2, const int moment11);
+				const long int area, const long int perimeter, const long int momentX, const long int momentY, const long int momentX2,
+				const long int momentY2, const long int moment11);
 };
