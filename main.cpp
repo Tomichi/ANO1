@@ -8,15 +8,49 @@ const int TRESHOLD_VALUE = 127;
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
 
-ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
+void computeFeatures(ImageObject & obj, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
-	long int momentX, momentY, momentX2, momentY2, area, perimeter, moment11;
+	long int momentX2, momentY2, moment11;
+	auto x = static_cast<int>(obj.xt), y = static_cast<int>(obj.yt);
+	std::queue<std::pair<int, int>> queue;
+	momentY2 = moment11 = momentX2 = 0;
+	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
+	const uchar DIFFERENT_COLOR = 5;
+	const int COLS = copyImage.cols, ROWS = copyImage.rows;
+	queue.push({y, x});
+	copyImage.at<uchar>(y, x) = DIFFERENT_COLOR;
+
+	while (!queue.empty()) {
+		auto & pair = queue.front();
+		y = pair.first;
+		x = pair.second;
+		queue.pop();
+		for (int xh = -1; xh < 2; xh++) {
+			for (int yh = -1; yh < 2; yh++) {
+				// Test image ranges
+				if (x + xh < 0 || x + xh >= COLS || y + yh < 0 || y + yh >= ROWS) {
+					continue;
+				}
+
+				if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
+					queue.push({y + yh, x + xh});
+					momentX2 += (x + xh - static_cast<int>(obj.xt)) * (x + xh - static_cast<int>(obj.xt));
+					momentY2 += (y + yh - static_cast<int>(obj.yt)) * (y + yh - static_cast<int>(obj.yt));
+					moment11 += (x + xh - static_cast<int>(obj.xt)) * (y + yh - static_cast<int>(obj.yt));
+					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
+				}
+			}
+		}
+	}
+	obj.setFeatures(momentX2, momentY2, moment11);
+}
+
+ImageObject computeMoment(int y, int x, cv::Mat & indexingImage) {
+	cv::Mat copyImage = indexingImage.clone();
+	long int momentX, momentY, area, perimeter;
 	std::queue<std::pair<int, int>> queue;
 	momentX = x;
 	momentY = y;
-	momentX2 = x*x;
-	momentY2 = y*y;
-	moment11 = x*y;
 	perimeter = 0;
 	area = 1;
 	const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
@@ -42,9 +76,6 @@ ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 					queue.push({y + yh, x + xh});
 					momentX += x + xh;
 					momentY += y + yh;
-					momentX2 += (x + xh) * (x + xh);
-					momentY2 += (y + yh) * (y + yh);
-					moment11 += (x + xh) * (y + yh);
 					area += 1;
 					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
 				}
@@ -58,7 +89,7 @@ ImageObject computeFeatures(int y, int x, cv::Mat & indexingImage) {
 		perimeter += (isBorderPixel) ? 1 : 0;
 	}
 
-	return {area, perimeter, momentX, momentY, momentX2, momentY2, moment11};
+	return {area, perimeter, momentX, momentY};
 
 }
 
@@ -114,7 +145,8 @@ int main() {
 		for (int x = 0; x < cols; x++) {
 			if (indexingImage.at<uchar>(y, x) == WHITE_PIXEL) {
 				floodFill(y, x, currentIndex, indexingImage);
-				auto imageObject = computeFeatures(y, x, indexingImage);
+				auto imageObject = computeMoment(y, x, indexingImage);
+				computeFeatures(imageObject, indexingImage);
 				objects.emplace_back(imageObject);
 				currentIndex += STEP;
 			}
@@ -126,9 +158,9 @@ int main() {
 		          << " Perimeter " << object.perimeter
 		          << " Moment [xt,yt] = [" << object.xt << "," << object.yt << "]"
 		          << " F1 = " << object.F1
-				  << " F2 = " << object.F2
+		          << " F2 = " << object.F2
 		          << "\n";
-		indexingImage.at<uchar>(object.yt, object.xt) = WHITE_PIXEL;
+		indexingImage.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 	}
 
 	objects.clear();
