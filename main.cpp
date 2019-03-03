@@ -10,7 +10,7 @@ const uchar BLACK_PIXEL = 0;
 
 void computeFeatures(ImageObject & obj, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
-	long int momentX2, momentY2, moment11;
+	double momentX2, momentY2, moment11;
 	auto x = static_cast<int>(obj.xt), y = static_cast<int>(obj.yt);
 	std::queue<std::pair<int, int>> queue;
 	momentY2 = moment11 = momentX2 = 0;
@@ -34,9 +34,9 @@ void computeFeatures(ImageObject & obj, cv::Mat & indexingImage) {
 
 				if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
 					queue.push({y + yh, x + xh});
-					momentX2 += (x + xh - static_cast<int>(obj.xt)) * (x + xh - static_cast<int>(obj.xt));
-					momentY2 += (y + yh - static_cast<int>(obj.yt)) * (y + yh - static_cast<int>(obj.yt));
-					moment11 += (x + xh - static_cast<int>(obj.xt)) * (y + yh - static_cast<int>(obj.yt));
+					momentX2 += (x + xh - (obj.xt)) * (x + xh - (obj.xt));
+					momentY2 += (y + yh - (obj.yt)) * (y + yh - (obj.yt));
+					moment11 += (x + xh - (obj.xt)) * (y + yh - (obj.yt));
 					copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
 				}
 			}
