@@ -1,10 +1,10 @@
 #include <iostream>
 #include <cmath>
 #include <queue>
+#include <string>
 #include <opencv2/opencv.hpp>
-#include "ImageObject.h"
+#include "Etalons.h"
 
-const int TRESHOLD_VALUE = 127;
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
 
@@ -124,49 +124,99 @@ void floodFill(int y, int x, const int currentIndex, cv::Mat & indexingImage) {
 	}
 }
 
-int main() {
-	std::ios_base::sync_with_stdio(false);
-	cv::Mat src_8uc1_img;
-	src_8uc1_img = cv::imread("images/train.png", CV_LOAD_IMAGE_GRAYSCALE);
-	const int cols = src_8uc1_img.cols, rows = src_8uc1_img.rows;
 
+void tresholdingImage(cv::Mat & input_image, const int TRESHOLD_VALUE) {
+	const int cols = input_image.cols, rows = input_image.rows;
 	for (int x = 0; x < cols; x++) {
 		for (int y = 0; y < rows; y++) {
-			src_8uc1_img.at<uchar>(y, x) = (src_8uc1_img.at<uchar>(y, x) >= TRESHOLD_VALUE) ? (uchar) 255 : (uchar) 0;
+			input_image.at<uchar>(y, x) = (input_image.at<uchar>(y, x) >= TRESHOLD_VALUE) ? (uchar) 255 : (uchar) 0;
 		}
 	}
+}
 
-	cv::Mat indexingImage = src_8uc1_img.clone();
-	std::vector<ImageObject> objects{};
-	// floodFill
-	int currentIndex = 20;
+void indexingImage(cv::Mat & input_image, std::vector<ImageObject> & image_objects) {
+	const int cols = input_image.cols, rows = input_image.rows;
+	int current_index = 20;
 	int STEP = 10;
 	for (int y = 0; y < rows; y++) {
 		for (int x = 0; x < cols; x++) {
-			if (indexingImage.at<uchar>(y, x) == WHITE_PIXEL) {
-				floodFill(y, x, currentIndex, indexingImage);
-				auto imageObject = computeMoment(y, x, indexingImage);
-				computeFeatures(imageObject, indexingImage);
-				objects.emplace_back(imageObject);
-				currentIndex += STEP;
+			if (input_image.at<uchar>(y, x) == WHITE_PIXEL) {
+				floodFill(y, x, current_index, input_image);
+				auto imageObject = computeMoment(y, x, input_image);
+				computeFeatures(imageObject, input_image);
+				image_objects.emplace_back(imageObject);
+				current_index += STEP;
 			}
 		}
 	}
+}
 
-	for (auto & object : objects) {
-		std::cout << "Area " << object.area
-		          << " Perimeter " << object.perimeter
-		          << " Moment [xt,yt] = [" << object.xt << "," << object.yt << "]"
-		          << " F1 = " << object.F1
-		          << " F2 = " << object.F2
-		          << "\n";
-		indexingImage.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
+
+int main() {
+	std::ios_base::sync_with_stdio(false);
+	cv::Mat src_8uc1_img, src_8uc1_img_test;
+	src_8uc1_img = cv::imread("images/train.png", CV_LOAD_IMAGE_GRAYSCALE);
+	src_8uc1_img_test = cv::imread("images/test01.png", CV_LOAD_IMAGE_GRAYSCALE);
+	const int TRESHOLD_VALUE = 127;
+	// train set
+	tresholdingImage(src_8uc1_img, TRESHOLD_VALUE);
+	// test set
+	tresholdingImage(src_8uc1_img_test, TRESHOLD_VALUE);
+
+	cv::Mat train_indexing_image = src_8uc1_img.clone(),
+			test_indexing_image = src_8uc1_img_test.clone();
+	std::vector<ImageObject> train_objects{}, test_objects{};
+	// floodFill
+	indexingImage(train_indexing_image, train_objects);
+	indexingImage(test_indexing_image, test_objects);
+
+	std::cout << "Train dataset \n";
+	for (auto & object : train_objects) {
+		object.printsImageObject();
+		train_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 	}
 
-	objects.clear();
+	std::vector<Etalons> etalons;
+	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik"}) {
+		etalons.emplace_back(name);
+	}
 
-	cv::imshow("result of tresholding", src_8uc1_img);
-	cv::imshow("result of flood fill", indexingImage);
+	for (int i = 0; i < train_objects.size(); i++) {
+		etalons[i / 4].set(train_objects[i]);
+	}
+
+	for (auto & etalon: etalons) {
+		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << etalon.getName() << "\n";
+	}
+
+
+	std::cout << "Test dataset \n";
+	for (auto & object : test_objects) {
+		object.printsImageObject();
+		test_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
+		double min = etalons[0].computeDist(object);
+		int min_index = 0;
+		for (int i = 1; i < etalons.size(); i++) {
+			if (etalons[i].computeDist(object) < min) {
+				min = etalons[i].computeDist(object);
+				min_index = i;
+			}
+		}
+
+		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt)-20, static_cast<int>(object.yt));
+		cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255), 1.0);
+
+		std::cout << etalons[min_index].getName() << "\n";
+	}
+
+	train_objects.clear();
+	test_objects.clear();
+	etalons.clear();
+
+	//cv::imshow("result of tresholding", src_8uc1_img);
+	//cv::imshow("result of test tresholding", src_8uc1_img_test);
+	cv::imshow("result of flood fill train", train_indexing_image);
+	cv::imshow("result of flood fill", test_indexing_image);
 	cv::waitKey(0); // wait until keypressed
 
 	return 0;

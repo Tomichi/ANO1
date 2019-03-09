@@ -15,3 +15,12 @@ void  ImageObject::setFeatures(const double momentX2, const double momentY2, con
 	this->miMax += 0.5 * std::sqrt(4.0 * moment11 * moment11 + (momentX2 - momentY2) * (momentX2 - momentY2));
 	this->F2 = miMin / miMax;
 }
+
+void ImageObject::printsImageObject() {
+	std::cout << "Area " << area
+	          << " Perimeter " << perimeter
+	          << " Moment [xt,yt] = [" << xt << "," << yt << "]"
+	          << " F1 = " << F1
+	          << " F2 = " << F2
+	          << "\n";
+}
