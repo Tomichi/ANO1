@@ -1,16 +1,67 @@
 #include <iostream>
 #include <cmath>
 #include <queue>
-#include <string>
 #include <opencv2/opencv.hpp>
 #include "Etalons.h"
 
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
 
+double computePerpendicularityFeature(ImageObject & obj, cv::Mat & indexingImage) {
+	int x = 0, y = 0, x_xh = 0, y_yh = 0;
+	double degree_rad = 0, new_x = 0, new_y = 0, max_x = 0, max_y = 0, area_AR = INT_MAX,
+			min_x = INT_MAX, min_y = INT_MAX;
+	for (int degree = 0; degree <= 90; degree +=5) {
+		degree_rad = M_PI * (degree / 180.0);
+		cv::Mat copyImage = indexingImage.clone();
+		x = static_cast<int>(obj.xt);
+		y = static_cast<int>(obj.yt);
+		std::queue<std::pair<int, int>> queue;
+		const uchar CURRENT_COLOR = copyImage.at<uchar>(y, x);
+		const uchar DIFFERENT_COLOR = 255;
+		const int COLS = copyImage.cols, ROWS = copyImage.rows;
+		queue.push({y, x});
+		copyImage.at<uchar>(y, x) = DIFFERENT_COLOR;
+		while (!queue.empty()) {
+			auto & pair = queue.front();
+			y = pair.first;
+			x = pair.second;
+			queue.pop();
+			for (int xh = -1; xh < 2; xh++) {
+				for (int yh = -1; yh < 2; yh++) {
+					// Test image ranges
+					if (x + xh < 0 || x + xh >= COLS || y + yh < 0 || y + yh >= ROWS) {
+						continue;
+					}
+
+					if (copyImage.at<uchar>(y + yh, x + xh) == CURRENT_COLOR) {
+						queue.push({y + yh, x + xh});
+						copyImage.at<uchar>(y + yh, x + xh) = (uchar) DIFFERENT_COLOR;
+						x_xh = x + xh - static_cast<int>(obj.xt), y_yh = y + yh - static_cast<int>(obj.yt);
+
+						new_x = cos(degree_rad) * (x_xh) - sin(degree_rad) * (y_yh);
+						new_y = sin(degree_rad) * (x_xh) + cos(degree_rad) * (y_yh);
+						min_x = std::min(min_x, new_x);
+						min_y = std::min(min_y, new_y);
+						max_x = std::max(max_x, new_x);
+						max_y = std::max(max_y, new_y);
+					}
+				}
+			}
+		}
+
+		double tmp_area = (max_x - min_x) * (max_y - min_y);
+		area_AR = std::min(tmp_area, area_AR);
+		min_x = min_y = INT_MAX;
+		max_y = max_x = 0;
+	}
+
+	return area_AR;
+}
+
 void computeFeatures(ImageObject & obj, cv::Mat & indexingImage) {
 	cv::Mat copyImage = indexingImage.clone();
-	double momentX2, momentY2, moment11;
+	double momentX2, momentY2, moment11, perpendicularity;
 	auto x = static_cast<int>(obj.xt), y = static_cast<int>(obj.yt);
 	std::queue<std::pair<int, int>> queue;
 	momentY2 = moment11 = momentX2 = 0;
@@ -42,7 +93,10 @@ void computeFeatures(ImageObject & obj, cv::Mat & indexingImage) {
 			}
 		}
 	}
-	obj.setFeatures(momentX2, momentY2, moment11);
+
+	perpendicularity = computePerpendicularityFeature(obj, indexingImage);
+
+	obj.setFeatures(momentX2, momentY2, moment11, perpendicularity);
 }
 
 ImageObject computeMoment(int y, int x, cv::Mat & indexingImage) {
@@ -124,7 +178,6 @@ void floodFill(int y, int x, const int currentIndex, cv::Mat & indexingImage) {
 	}
 }
 
-
 void tresholdingImage(cv::Mat & input_image, const int TRESHOLD_VALUE) {
 	const int cols = input_image.cols, rows = input_image.rows;
 	for (int x = 0; x < cols; x++) {
@@ -151,12 +204,11 @@ void indexingImage(cv::Mat & input_image, std::vector<ImageObject> & image_objec
 	}
 }
 
-
 int main() {
 	std::ios_base::sync_with_stdio(false);
 	cv::Mat src_8uc1_img, src_8uc1_img_test;
-	src_8uc1_img = cv::imread("images/train.png", CV_LOAD_IMAGE_GRAYSCALE);
-	src_8uc1_img_test = cv::imread("images/test01.png", CV_LOAD_IMAGE_GRAYSCALE);
+	src_8uc1_img = cv::imread("images/train04.png", CV_LOAD_IMAGE_GRAYSCALE);
+	src_8uc1_img_test = cv::imread("images/test04.png", CV_LOAD_IMAGE_GRAYSCALE);
 	const int TRESHOLD_VALUE = 127;
 	// train set
 	tresholdingImage(src_8uc1_img, TRESHOLD_VALUE);
@@ -177,7 +229,7 @@ int main() {
 	}
 
 	std::vector<Etalons> etalons;
-	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik"}) {
+	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
 		etalons.emplace_back(name);
 	}
 
@@ -186,7 +238,8 @@ int main() {
 	}
 
 	for (auto & etalon: etalons) {
-		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << etalon.getName() << "\n";
+		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << " z=" << etalon.getZ() << " "
+		          << etalon.getName() << "\n";
 	}
 
 
@@ -203,8 +256,9 @@ int main() {
 			}
 		}
 
-		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt)-20, static_cast<int>(object.yt));
-		cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0, cv::Scalar(255), 1.0);
+		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
+		cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
+		            cv::Scalar(255), 1.0);
 
 		std::cout << etalons[min_index].getName() << "\n";
 	}

@@ -9,6 +9,7 @@ class Etalons {
 		void set(ImageObject & object);
 		double getX();
 		double getY();
+		double getZ();
 		std::string getName();
 		double computeDist(ImageObject & object);
 	private:

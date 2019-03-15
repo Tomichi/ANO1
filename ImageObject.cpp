@@ -9,11 +9,13 @@ ImageObject::ImageObject(
 	this->F1 = (perimeter * perimeter) / (100.0 * area);
 }
 
-void  ImageObject::setFeatures(const double momentX2, const double momentY2, const double moment11) {
+void ImageObject::setFeatures(const double momentX2, const double momentY2, const double moment11,
+                              const double perpendicularity) {
 	this->miMin = this->miMax = 0.5 * (momentX2 + momentY2);
 	this->miMin -= 0.5 * std::sqrt(4.0 * moment11 * moment11 + (momentX2 - momentY2) * (momentX2 - momentY2));
 	this->miMax += 0.5 * std::sqrt(4.0 * moment11 * moment11 + (momentX2 - momentY2) * (momentX2 - momentY2));
 	this->F2 = miMin / miMax;
+	this->F3 = area / perpendicularity;
 }
 
 void ImageObject::printsImageObject() {
@@ -22,5 +24,6 @@ void ImageObject::printsImageObject() {
 	          << " Moment [xt,yt] = [" << xt << "," << yt << "]"
 	          << " F1 = " << F1
 	          << " F2 = " << F2
+	          << " F3 = " << F3
 	          << "\n";
 }
