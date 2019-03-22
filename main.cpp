@@ -3,6 +3,7 @@
 #include <queue>
 #include <opencv2/opencv.hpp>
 #include "Etalons.h"
+#include "kMeans.h"
 
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
@@ -161,7 +162,6 @@ void floodFill(int y, int x, const int currentIndex, cv::Mat & indexingImage) {
 		x = pairs.second;
 
 		// test 8 direction
-		bool border = false;
 		for (int xh = -1; xh < 2; xh++) {
 			for (int yh = -1; yh < 2; yh++) {
 				// Test image ranges
@@ -228,44 +228,59 @@ int main() {
 		train_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 	}
 
-	std::vector<Etalons> etalons;
-	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
-		etalons.emplace_back(name);
+	//std::vector<Etalons> etalons;
+	//  for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
+	//	    etalons.emplace_back(name);
+	//  }
+
+	//  for (int i = 0; i < train_objects.size(); i++) {
+	//	    etalons[i / 4].set(train_objects[i]);
+	//  }
+
+
+	//	for (auto & etalon: etalons) {
+	//		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << " z=" << etalon.getZ() << " "
+	//		          << etalon.getName() << "\n";
+	//	}
+	kMeans KMeans(4, 10);
+	for (const auto & object: train_objects) {
+		KMeans.addPoint(Point(object.F1, object.F2, object.F3));
 	}
 
-	for (int i = 0; i < train_objects.size(); i++) {
-		etalons[i / 4].set(train_objects[i]);
-	}
-
-	for (auto & etalon: etalons) {
-		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << " z=" << etalon.getZ() << " "
-		          << etalon.getName() << "\n";
-	}
-
+	KMeans.runkMeans();
 
 	std::cout << "Test dataset \n";
 	for (auto & object : test_objects) {
 		object.printsImageObject();
 		test_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
-		double min = etalons[0].computeDist(object);
-		int min_index = 0;
-		for (int i = 1; i < etalons.size(); i++) {
-			if (etalons[i].computeDist(object) < min) {
-				min = etalons[i].computeDist(object);
-				min_index = i;
-			}
-		}
+
+		const auto index = KMeans.neighbourCluster(Point(object.F1, object.F2, object.F3));
 
 		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
-		cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
-		            cv::Scalar(255), 1.0);
 
-		std::cout << etalons[min_index].getName() << "\n";
+		cv::putText(test_indexing_image, index, centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
+		            cv::Scalar(255), 1);
+
+
+		//double min = etalons[0].computeDist(object);
+		//int min_index = 0;
+		//for (int i = 1; i < etalons.size(); i++) {
+		//	if (etalons[i].computeDist(object) < min) {
+		//		min = etalons[i].computeDist(object);
+		//		min_index = i;
+		//	}
+		//}
+
+		//cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
+		//cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
+		//            cv::Scalar(255), 1.0);
+
+		//std::cout << etalons[min_index].getName() << "\n";
 	}
 
 	train_objects.clear();
 	test_objects.clear();
-	etalons.clear();
+	//etalons.clear();
 
 	//cv::imshow("result of tresholding", src_8uc1_img);
 	//cv::imshow("result of test tresholding", src_8uc1_img_test);
