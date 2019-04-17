@@ -27,13 +27,11 @@ double kMeans::euclideanDistance(const Point & point, const Point & cluster) {
 }
 
 void kMeans::runkMeans() {
-	std::random_device seed;
-	std::mt19937 generator(seed());
-	std::uniform_int_distribution<> distribution(0, static_cast<int>(points.size() - 1));
-	int tmp_candidate;
+	std::random_device rd;
+	std::mt19937 g(rd());
+	std::shuffle(this->points.begin(), this->points.end(), g);
 	for (int k = 0; k < this->number_of_clusters; ++k) {
-		tmp_candidate = distribution(generator);
-		this->clusters.push_back(this->points[tmp_candidate]);
+		this->clusters.push_back(this->points[k]);
 	}
 	double min, current_dist;
 	int min_cluste_index;
@@ -64,14 +62,6 @@ void kMeans::runkMeans() {
 			this->clusters[i].y /= numbers;
 			this->clusters[i].z /= numbers;
 		}
-	}
-	bool isNan = false;
-	for (const auto & cluster: clusters) {
-		isNan = isNan || isnan(cluster.x);
-	}
-	if (isNan) {
-		this->clusters.clear();
-		this->runkMeans();
 	}
 }
 
