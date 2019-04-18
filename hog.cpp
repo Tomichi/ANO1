@@ -66,7 +66,7 @@ int main() {
 			//std::cout << "cells (" << start_x << "," << start_y << "), (" << end_x << "," << end_y<< ")" << "\n";
 			for (int yp = start_y; yp < end_y; yp++) {
 				for (int xp = start_x; xp < end_x; xp++) {
-					cells_vector[y][x][(int)cells.at<uchar>(yp, xp)] += 1;
+					cells_vector[y][x][(int)cells.at<uchar>(yp, xp)] += f_features.at<cv::Vec2d>(yp, xp)[1];
 				}
 			}
 			//for (int p = 0; p < PINS; ++p) {
