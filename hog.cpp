@@ -31,7 +31,7 @@ int main() {
 			f_features.at<cv::Vec2d>(y, x) = cv::Vec2d(angle, size);
 			angle = (angle * 180) / M_PI;
 			angle += (angle < 0.0) ? 180 : 0;
-			cells.at<uchar>(y, x) = static_cast<int>(std::floor(angle / degree_of_pins));
+			cells.at<uchar>(y, x) = (static_cast<int>(std::floor(angle / degree_of_pins)) % PINS);
 			//std::cout << fx << " " << fy << " " << angle << " " << (int)cells.at<uchar>(y,x) << "\n";
 		}
 	}
