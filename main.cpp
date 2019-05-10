@@ -4,12 +4,58 @@
 #include <opencv2/opencv.hpp>
 #include "Etalons.h"
 #include "kMeans.h"
+#include "backprop.h"
 
 
-#define KMEANS true
+
+#define KMEANS false
 #define ETALONS false
+#define NEURAL true
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
+
+std::string objects_name[4]= {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"};
+
+void train(NN* nn)
+{
+	int n = 16;
+	auto ** trainingSet = new double * [n];
+	double f1,f2,f3,a1,a2,a3,a4;
+	std::ifstream neuralDataFile;
+	neuralDataFile.open("dataclear.txt");
+	if (!neuralDataFile) {
+		std::cout << "Unable to open file";
+		return;
+	}
+
+	for ( int i = 0; i < n; i++ ) {
+		trainingSet[i] = new double[nn->n[0] + nn->n[nn->l - 1]];
+		neuralDataFile >> f1 >> f2 >> f3 >> a1 >> a2 >> a3 >> a4;
+		int key = 0;
+		for (auto value : {f1,f2,f3,a1,a2,a3,a4}) {
+			trainingSet[i][key] = value;
+			++key;
+		}
+	}
+	neuralDataFile.close();
+
+	double error = 1.0;
+	int i = 0;
+	while(error > 0.001) {
+		setInput( nn, trainingSet[i%n] );
+		feedforward( nn );
+		error = backpropagation( nn, &trainingSet[i%n][nn->n[0]] );
+		i++;
+		//std::cout << "err="<< error<< "\n";
+	}
+	std::cout << "err="<< error<< "\n";
+	std::cout <<"("<< i <<" iterations)\n";
+
+	for ( int i = 0; i < n; i++ ) {
+		delete [] trainingSet[i];
+	}
+	delete [] trainingSet;
+}
 
 double computePerpendicularityFeature(ImageObject & obj, cv::Mat & indexingImage) {
 	int x = 0, y = 0, x_xh = 0, y_yh = 0;
@@ -231,9 +277,18 @@ int main() {
 		train_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 	}
 
+
+#if defined(NEURAL) && NEURAL == true
+	NN * nn = createNN(3, 4, 4);
+	train(nn);
+	double* in = new double[nn->n[0]];
+	//test(nn, 100);
+
+#endif
+
 #if defined(ETALONS) && ETALONS == true
 	std::vector<Etalons> etalons;
-	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
+	for (auto & name : objects_name) {
 		etalons.emplace_back(name);
 	}
 
@@ -285,12 +340,33 @@ int main() {
 
 		std::cout << etalons[min_index].getName() << "\n";
 #endif
+#if defined(NEURAL) && NEURAL == true
+		int key = 0;
+		for(auto value: {object.F1, object.F2, object.F3}) {
+			in[key] =value;
+			key++;
+		}
+		setInput( nn, in, true );
+		feedforward( nn );
+		int output = getOutput( nn, true );
+		cv::Point centersPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
+
+		cv::putText(test_indexing_image, objects_name[output], centersPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
+		            cv::Scalar(255), 1);
+
+#endif
+
 	}
 
 	train_objects.clear();
 	test_objects.clear();
 #if defined(ETALONS) && ETALONS == true
 	etalons.clear();
+#endif
+
+#if defined(NEURAL) && NEURAL == true
+	delete [] in;
+	releaseNN(nn);
 #endif
 
 	//cv::imshow("result of tresholding", src_8uc1_img);
