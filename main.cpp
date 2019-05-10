@@ -5,6 +5,9 @@
 #include "Etalons.h"
 #include "kMeans.h"
 
+
+#define KMEANS true
+#define ETALONS false
 const uchar WHITE_PIXEL = 255;
 const uchar BLACK_PIXEL = 0;
 
@@ -12,7 +15,7 @@ double computePerpendicularityFeature(ImageObject & obj, cv::Mat & indexingImage
 	int x = 0, y = 0, x_xh = 0, y_yh = 0;
 	double degree_rad = 0, new_x = 0, new_y = 0, max_x = 0, max_y = 0, area_AR = INT_MAX,
 			min_x = INT_MAX, min_y = INT_MAX;
-	for (int degree = 0; degree <= 90; degree +=5) {
+	for (int degree = 0; degree <= 90; degree += 5) {
 		degree_rad = M_PI * (degree / 180.0);
 		cv::Mat copyImage = indexingImage.clone();
 		x = static_cast<int>(obj.xt);
@@ -228,59 +231,67 @@ int main() {
 		train_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 	}
 
-	//std::vector<Etalons> etalons;
-	//  for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
-	//	    etalons.emplace_back(name);
-	//  }
+#if defined(ETALONS) && ETALONS == true
+	std::vector<Etalons> etalons;
+	for (auto & name : {"Ctverec", "Hvezda", "Obdelnik", "Kolecko"}) {
+		etalons.emplace_back(name);
+	}
 
-	//  for (int i = 0; i < train_objects.size(); i++) {
-	//	    etalons[i / 4].set(train_objects[i]);
-	//  }
+	for (int i = 0; i < train_objects.size(); i++) {
+		etalons[i / 4].set(train_objects[i]);
+	}
 
 
-	//	for (auto & etalon: etalons) {
-	//		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << " z=" << etalon.getZ() << " "
-	//		          << etalon.getName() << "\n";
-	//	}
-	kMeans KMeans(4, 10);
+	for (auto & etalon: etalons) {
+		std::cout << "x =" << etalon.getX() << " y=" << etalon.getY() << " " << " z=" << etalon.getZ() << " "
+		          << etalon.getName() << "\n";
+	}
+#endif
+#if defined(KMEANS) && KMEANS == true
+	kMeans KMeans(4, 50);
 	for (const auto & object: train_objects) {
 		KMeans.addPoint(Point(object.F1, object.F2, object.F3));
 	}
 
 	KMeans.runkMeans();
-
+#endif
 	std::cout << "Test dataset \n";
 	for (auto & object : test_objects) {
 		object.printsImageObject();
 		test_indexing_image.at<uchar>(static_cast<int>(object.yt), static_cast<int>(object.xt)) = WHITE_PIXEL;
 
+#if defined(KMEANS) && KMEANS == true
 		const auto index = KMeans.neighbourCluster(Point(object.F1, object.F2, object.F3));
 
 		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
 
 		cv::putText(test_indexing_image, index, centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
 		            cv::Scalar(255), 1);
+#endif
 
+#if defined(ETALONS) && ETALONS == true
+		double min = etalons[0].computeDist(object);
+		int min_index = 0;
+		for (int i = 1; i < etalons.size(); i++) {
+			if (etalons[i].computeDist(object) < min) {
+				min = etalons[i].computeDist(object);
+				min_index = i;
+			}
+		}
 
-		//double min = etalons[0].computeDist(object);
-		//int min_index = 0;
-		//for (int i = 1; i < etalons.size(); i++) {
-		//	if (etalons[i].computeDist(object) < min) {
-		//		min = etalons[i].computeDist(object);
-		//		min_index = i;
-		//	}
-		//}
+		cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
+		cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
+		            cv::Scalar(255), 1.0);
 
-		//cv::Point centerPoint = cv::Point(static_cast<int>(object.xt) - 20, static_cast<int>(object.yt));
-		//cv::putText(test_indexing_image, etalons[min_index].getName(), centerPoint, cv::FONT_HERSHEY_PLAIN, 1.0,
-		//            cv::Scalar(255), 1.0);
-
-		//std::cout << etalons[min_index].getName() << "\n";
+		std::cout << etalons[min_index].getName() << "\n";
+#endif
 	}
 
 	train_objects.clear();
 	test_objects.clear();
-	//etalons.clear();
+#if defined(ETALONS) && ETALONS == true
+	etalons.clear();
+#endif
 
 	//cv::imshow("result of tresholding", src_8uc1_img);
 	//cv::imshow("result of test tresholding", src_8uc1_img_test);

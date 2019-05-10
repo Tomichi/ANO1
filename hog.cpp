@@ -86,11 +86,10 @@ int main() {
 	std::ios_base::sync_with_stdio(false);
 	const int DATA_SETS = 800;
 	for (int number = 0; number < 10; number++) {
-		std::cout << number << " " << DATA_SETS << "\n";
 		for (int dataSet = 0; dataSet < DATA_SETS; dataSet++) {
 			cv::Mat src_8uc1_img, src_8uc1_img_test;
 			std::stringstream image_path;
-			image_path << "/Users/tomichi/ClionProjects/ANO1/MNIST/training/" << number << "/" << std::setfill('0')
+			image_path << "/Users/tomichi/ClionProjects/ANO1/MNIST/testing/" << number << "/" << std::setfill('0')
 			           << std::setw(4) << dataSet << ".png";
 
 			src_8uc1_img = cv::imread(image_path.str(), CV_LOAD_IMAGE_GRAYSCALE);
@@ -161,10 +160,11 @@ int main() {
 				}
 			}
 
+			std::cout << number << ",";
 			for (int y = 0; y < imageInfo.num_of_cells_y; ++y) {
 				for (int x = 0; x < imageInfo.num_of_cells_x; ++x) {
 					for (int p = 0; p < PINS; ++p) {
-						std::cout <<  std::fixed << std::setprecision(8) << cells_vector[y][x][p] << " ";
+						std::cout << std::fixed << std::setprecision(5) << cells_vector[y][x][p] << ", ";
 					}
 				}
 			}
